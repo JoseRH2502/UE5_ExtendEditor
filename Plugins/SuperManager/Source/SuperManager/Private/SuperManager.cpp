@@ -261,6 +261,19 @@ TArray<TSharedPtr<FAssetData>> FSuperManagerModule::GetAllAssetDataUnderSelected
 }
 #pragma endregion
 
+#pragma region ProccessDataForAdvanceDeletionTab
+bool FSuperManagerModule::DeleteSingleAssetForAssetList(const FAssetData & AssetDataToDelete)
+{	
+	TArray<FAssetData> AssetDataForDeletion;
+	AssetDataForDeletion.Add(AssetDataToDelete);
+	if(ObjectTools::DeleteAssets(AssetDataForDeletion)>0)
+	{
+		return true;
+	}
+	return false;
+}
+#pragma endregion
+
 void FSuperManagerModule::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,

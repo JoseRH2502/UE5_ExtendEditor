@@ -4,6 +4,7 @@
 #include "SlateWidgets/AdvanceDeletionWidget.h"
 #include "SlateBasics.h"
 #include "DebugHeader.h"
+#include "SuperManager.h"
 
 void SAdvanceDeletionTab::Construct(const FArguments& InArgs)
 {
@@ -41,10 +42,7 @@ void SAdvanceDeletionTab::Construct(const FArguments& InArgs)
 			SNew(SScrollBox)
 			+SScrollBox::Slot()
 			[
-				SNew(SListView< TSharedPtr <FAssetData> >)
-				.ItemHeight(24.f)
-				.ListItemsSource(&StoredAssetsData)
-				.OnGenerateRow(this,&SAdvanceDeletionTab::OnGenerateRowForList)
+				ConstructAssetListView()
 			]
 		]
 		//Fourth slot for 3 buttons
@@ -54,6 +52,15 @@ void SAdvanceDeletionTab::Construct(const FArguments& InArgs)
 			SNew(SHorizontalBox)
 		]
 	];
+}
+
+TSharedRef<SListView<TSharedPtr<FAssetData>>> SAdvanceDeletionTab::ConstructAssetListView()
+{	
+	ConstructedAssetListView = SNew(SListView< TSharedPtr <FAssetData> >)
+	.ItemHeight(24.f)
+	.ListItemsSource(&StoredAssetsData)
+	.OnGenerateRow(this,&SAdvanceDeletionTab::OnGenerateRowForList);
+	return ConstructedAssetListView.ToSharedRef();
 }
 
 TSharedRef<ITableRow> SAdvanceDeletionTab::OnGenerateRowForList(TSharedPtr<FAssetData> AssetDataToDisplay,
@@ -67,11 +74,28 @@ TSharedRef<ITableRow> SAdvanceDeletionTab::OnGenerateRowForList(TSharedPtr<FAsse
 	FSlateFontInfo AssetClassNameFont = GetEmboseedTextFont();
 	AssetClassNameFont.Size = 10;
 	FSlateFontInfo AssetNameFont = GetEmboseedTextFont();
-	AssetNameFont.Size = 15;
-	
+	AssetNameFont.Size = 10;
+	// Debug
+	//TODO: Arreglar el display class
+	if (!AssetDataToDisplay.IsValid())
+	{
+		DebugHeader::Print(TEXT("AssetDataToDisplay is invalid"), FColor::Red);
+		return SNew(STableRow<TSharedPtr<FAssetData>>, OwnerTable);
+	}
+
+	if (AssetDataToDisplay->AssetName.IsNone())
+	{
+		DebugHeader::Print(TEXT("AssetName is None"), FColor::Red);
+	}
+
+	if (AssetDataToDisplay->AssetClass.IsNone())
+	{
+		DebugHeader::Print(TEXT("AssetClass is None"), FColor::Red);
+	}
+
 	
 	TSharedRef< STableRow < TSharedPtr <FAssetData> > > ListViewRowWidget =
-	SNew(STableRow < TSharedPtr <FAssetData> >,OwnerTable)
+		SNew(STableRow < TSharedPtr <FAssetData> >,OwnerTable).Padding(FMargin(5.f))
 		[	
 			SNew(SHorizontalBox)
 			//First slot for check box
@@ -87,17 +111,25 @@ TSharedRef<ITableRow> SAdvanceDeletionTab::OnGenerateRowForList(TSharedPtr<FAsse
 			+SHorizontalBox::Slot()
 			.HAlign(HAlign_Center)
 			.VAlign(VAlign_Fill)
-			.FillWidth(.2f)
+			.FillWidth(.5f)
 			[
 				ConstructTextForRowWidget(DisplayAssetClassName,AssetClassNameFont)
 			]
 			//Third slot for displaying asset name
 			+SHorizontalBox::Slot()
+			.HAlign(HAlign_Left)
+			.VAlign(VAlign_Fill)
 			[
 				ConstructTextForRowWidget(DisplayAssetName,AssetNameFont)
 			]
 		
 			//Fourth slot for a button
+			+SHorizontalBox::Slot()
+			.HAlign(HAlign_Right)
+			.VAlign(VAlign_Fill)
+			[
+				ConstructButtonForRowWidget(AssetDataToDisplay)
+			]
 	];
 	return ListViewRowWidget;
 }
@@ -138,4 +170,38 @@ TSharedRef<STextBlock> SAdvanceDeletionTab::ConstructTextForRowWidget(const FStr
 	.Font(FontToUse)
 	.ColorAndOpacity(FColor::White);
 	return ConstructedTextBlock;
+}
+
+TSharedRef<SButton> SAdvanceDeletionTab::ConstructButtonForRowWidget(const TSharedPtr<FAssetData>& AssetDataToDisplay)
+{
+	TSharedRef<SButton> ConstructedButton = SNew(SButton)
+	.Text(FText::FromString(TEXT("Delete")))
+	.OnClicked(this,&SAdvanceDeletionTab::OnDeleteButtonClicked,AssetDataToDisplay);
+	return ConstructedButton;
+}
+FReply SAdvanceDeletionTab::OnDeleteButtonClicked(TSharedPtr<FAssetData> ClickedAssetData)
+{	
+	FSuperManagerModule& SuperManagerModule = 
+	 FModuleManager::LoadModuleChecked<FSuperManagerModule>(TEXT("SuperManager"));
+
+	const bool bAssetDeleted = SuperManagerModule.DeleteSingleAssetForAssetList(*ClickedAssetData.Get());
+	if(bAssetDeleted)
+	{
+		//Updating the list source items
+		if(StoredAssetsData.Contains(ClickedAssetData))
+		{
+			StoredAssetsData.Remove(ClickedAssetData);
+		}
+		//Refresh the list
+		RefreshAssetListView();
+	}
+	return FReply::Handled();
+}
+
+void SAdvanceDeletionTab::RefreshAssetListView()
+{
+	if(ConstructedAssetListView.IsValid())
+	{
+		ConstructedAssetListView->RebuildList();
+	}
 }
