@@ -221,27 +221,33 @@ TSharedRef<SDockTab> FSuperManagerModule::OnSpawnAdvanceDelectionTab(const FSpaw
 
 TArray<TSharedPtr<FAssetData>> FSuperManagerModule::GetAllAssetDataUnderSelectedFolder()
 {
-	TArray< TSharedPtr <FAssetData> > AvaiableAssetsData;
-	if (FolderPathsSelected.Num() == 0) 
-	{
-		DebugHeader::ShowMsgDialog(EAppMsgType::Ok, TEXT("No folder selected. Please select a valid folder."));
-		return AvaiableAssetsData;
-	}
-	const FString& SelectedFolderPath = FolderPathsSelected[0];
-	// Verificar si la carpeta existe antes de continuar
-	if (!UEditorAssetLibrary::DoesDirectoryExist(SelectedFolderPath))
-	{
-		DebugHeader::ShowMsgDialog(EAppMsgType::Ok, TEXT("The selected folder does not exist."));
-		return AvaiableAssetsData;
-	}
-	// Obtener los paths de los assets
-	TArray<FString> AssetsPathNames = UEditorAssetLibrary::ListAssets(SelectedFolderPath);
-	if (AssetsPathNames.Num() == 0) 
-	{
-		DebugHeader::ShowMsgDialog(EAppMsgType::Ok, TEXT("No assets found under the selected folder."), false);
-		return AvaiableAssetsData;
-	}
-
+	TArray<TSharedPtr<FAssetData>> AvailableAssetsData;
+    
+    // Validar si hay carpetas seleccionadas
+    if (FolderPathsSelected.Num() == 0) 
+    {
+    	DebugHeader::Print(TEXT("No folder selected. Please select a valid folder."), FColor::Red);
+    	return AvailableAssetsData;
+    }
+    
+    const FString& SelectedFolderPath = FolderPathsSelected[0];
+    
+    // Verificar si la carpeta seleccionada existe
+    if (!UEditorAssetLibrary::DoesDirectoryExist(SelectedFolderPath))
+    {
+    	DebugHeader::Print(TEXT("The selected folder does not exist: " + SelectedFolderPath), FColor::Red);
+    	return AvailableAssetsData;
+    }
+    
+    // Obtener los paths de los assets
+    TArray<FString> AssetsPathNames = UEditorAssetLibrary::ListAssets(SelectedFolderPath);
+    
+    // Validar si se encontraron activos en la carpeta seleccionada
+    if (AssetsPathNames.Num() == 0) 
+    {
+    	DebugHeader::Print(TEXT("No assets found under the selected folder: " + SelectedFolderPath), FColor::Yellow);
+    	return AvailableAssetsData;
+    }
 	
 	for(const FString& AssetPathName:AssetsPathNames)
 	{
@@ -255,9 +261,18 @@ TArray<TSharedPtr<FAssetData>> FSuperManagerModule::GetAllAssetDataUnderSelected
 		}
 		if(!UEditorAssetLibrary::DoesAssetExist(AssetPathName)) continue;
 		const FAssetData Data = UEditorAssetLibrary::FindAssetData(AssetPathName);
-		AvaiableAssetsData.Add(MakeShared<FAssetData>(Data));
+		 AvailableAssetsData.Add(MakeShared<FAssetData>(Data));
 	}
-	return AvaiableAssetsData;
+	return  AvailableAssetsData;
+}
+
+bool FSuperManagerModule::DeleteMultipleAssetsForAssetList(const TArray<FAssetData>& AssetsToDelete)
+{
+	if(ObjectTools::DeleteAssets(AssetsToDelete)>0)
+	{
+		return true;
+	}
+	return false;
 }
 #pragma endregion
 
