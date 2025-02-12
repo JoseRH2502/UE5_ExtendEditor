@@ -17,7 +17,6 @@ public:
 	void Construct(const FArguments& InArgs);
 
 private:
-	TArray< TSharedPtr <FAssetData> > StoredAssetsData;
 	TSharedRef< SListView< TSharedPtr <FAssetData> > > ConstructAssetListView();
 	TSharedPtr< SListView< TSharedPtr <FAssetData> > > ConstructedAssetListView;
 	void RefreshAssetListView();
@@ -26,6 +25,14 @@ private:
 	TSharedRef<SCheckBox> ConstructCheckBox(const TSharedPtr<FAssetData>& AssetDataToDisplay);
 	void OnCheckBoxStateChanged(ECheckBoxState NewState, TSharedPtr<FAssetData> AssetData);
 
+#pragma region ComboBoxForListingCondition
+	TSharedRef< SComboBox < TSharedPtr <FString> > > ConstructComboBox();
+	TArray< TSharedPtr <FString> > ComboBoxSourceItems;
+	TSharedRef<SWidget> OnGenerateComboContent(TSharedPtr<FString> SourceItem);
+	void OnComboSelectionChanged(TSharedPtr<FString> SelectedOption,ESelectInfo::Type InSelectInfo);
+	TSharedPtr<STextBlock> ComboDiplayTextBlock;
+#pragma endregion
+	
 #pragma region RowWidgetForAssetListView
 	TSharedRef<STextBlock> ConstructTextForRowWidget(const FString& TextContent, const FSlateFontInfo& FontToUse);
 	FSlateFontInfo GetEmboseedTextFont() const {return FCoreStyle::Get().GetFontStyle(FName("EmbossedText"));}
@@ -42,6 +49,9 @@ private:
 	FReply OnDeselectAllButtonClicked();
 	TSharedRef<STextBlock> ConstructTextForTabButtons(const FString& TextContent);
 #pragma endregion
-	
+
+	TArray< TSharedPtr <FAssetData> > StoredAssetsData;
+	TArray< TSharedRef <SCheckBox> > CheckBoxesArray;
 	TArray< TSharedPtr < FAssetData> > AssetsDataToDeleteArray;
+	TArray< TSharedPtr <FAssetData> > DisplayedAssetsData;
 };

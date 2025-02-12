@@ -6,6 +6,9 @@
 #include "DebugHeader.h"
 #include "SuperManager.h"
 
+#define ListAll TEXT("List All Available Assets")
+#define ListUnused TEXT("List Unused Assets")
+
 void SAdvanceDeletionTab::Construct(const FArguments& InArgs)
 {
 	bCanSupportFocus = true;
@@ -13,6 +16,12 @@ void SAdvanceDeletionTab::Construct(const FArguments& InArgs)
 	FSlateFontInfo TitleTextFont = FCoreStyle::Get().GetFontStyle("EmbossedText");
 	TitleTextFont.Size = 30;
 	StoredAssetsData = InArgs._AssetsDataToStore;
+	DisplayedAssetsData = StoredAssetsData;
+	
+	CheckBoxesArray.Empty();
+	AssetsDataToDeleteArray.Empty();
+	ComboBoxSourceItems.Add(MakeShared<FString>(ListAll));
+	ComboBoxSourceItems.Add(MakeShared<FString>(ListUnused));
 	
 	ChildSlot
 	[
@@ -34,6 +43,11 @@ void SAdvanceDeletionTab::Construct(const FArguments& InArgs)
 		.AutoHeight()
 		[
 			SNew(SHorizontalBox)
+			+SHorizontalBox::Slot()
+			.AutoWidth()
+			[
+				ConstructComboBox()
+			]
 		]
 		//Third slot for the asset list
 		+SVerticalBox::Slot()
@@ -87,16 +101,18 @@ void SAdvanceDeletionTab::Construct(const FArguments& InArgs)
 TSharedRef<SListView<TSharedPtr<FAssetData>>> SAdvanceDeletionTab::ConstructAssetListView()
 {	
 	ConstructedAssetListView = SNew(SListView< TSharedPtr <FAssetData> >)
-	.ItemHeight(40.f) // Espacio entre elementos
-	.ListItemsSource(&StoredAssetsData)
-	.OnGenerateRow(this, &SAdvanceDeletionTab::OnGenerateRowForList);
+	    .ItemHeight(40.f) // Espacio entre elementos
+		.ListItemsSource(&DisplayedAssetsData)
+	    .OnGenerateRow(this, &SAdvanceDeletionTab::OnGenerateRowForList);
 	return ConstructedAssetListView.ToSharedRef();
 
 }
 
 void SAdvanceDeletionTab::RefreshAssetListView()
 {
+	CheckBoxesArray.Empty();
 	AssetsDataToDeleteArray.Empty();
+	
 	if(ConstructedAssetListView.IsValid())
 	{
 		ConstructedAssetListView->RebuildList();
@@ -181,6 +197,8 @@ TSharedRef<SCheckBox> SAdvanceDeletionTab::ConstructCheckBox(const TSharedPtr<FA
 	.Type(ESlateCheckBoxType::CheckBox)
 	.OnCheckStateChanged(this,&SAdvanceDeletionTab::OnCheckBoxStateChanged,AssetDataToDisplay)
 	.Visibility(EVisibility::Visible);
+
+	CheckBoxesArray.Add(ConstructedCheckBox);
 	return ConstructedCheckBox;
 	
 }
@@ -312,13 +330,28 @@ FReply SAdvanceDeletionTab::OnDeleteAllButtonClicked()
 
 FReply SAdvanceDeletionTab::OnSelectAllButtonClicked()
 {
-	DebugHeader::Print(TEXT("Select All Button Clicked"),FColor::Cyan);
+	if(CheckBoxesArray.Num()==0) return FReply::Handled();
+	for(const TSharedRef<SCheckBox>& CheckBox:CheckBoxesArray)
+	{	
+		if(!CheckBox->IsChecked())
+		{
+			CheckBox->ToggleCheckedState();
+		}		
+	}
 	return FReply::Handled();
 }
 
 FReply SAdvanceDeletionTab::OnDeselectAllButtonClicked()
 {
-	DebugHeader::Print(TEXT("Deselect All Button Clicked"),FColor::Cyan);
+	if(CheckBoxesArray.Num()==0) return FReply::Handled();
+	for(const TSharedRef<SCheckBox>& CheckBox:CheckBoxesArray)
+	{
+		if(CheckBox->IsChecked())
+		{
+			CheckBox->ToggleCheckedState();
+		}
+	}
+
 	return FReply::Handled();
 
 }
@@ -335,3 +368,43 @@ TSharedRef<STextBlock> SAdvanceDeletionTab::ConstructTextForTabButtons(const FSt
 }
 #pragma endregion
 
+#pragma region ComboBoxForListingCondition
+TSharedRef<SComboBox<TSharedPtr<FString>>> SAdvanceDeletionTab::ConstructComboBox()
+{
+	TSharedRef< SComboBox < TSharedPtr <FString > > > ConstructedComboBox =
+	SNew(SComboBox < TSharedPtr <FString > >)
+	.OptionsSource(&ComboBoxSourceItems)
+	.OnGenerateWidget(this,&SAdvanceDeletionTab::OnGenerateComboContent)
+	.OnSelectionChanged(this,&SAdvanceDeletionTab::OnComboSelectionChanged)
+	[
+		SAssignNew(ComboDiplayTextBlock,STextBlock)
+		.Text(FText::FromString(TEXT("List Assets Option")))
+	];
+	return ConstructedComboBox;
+}
+TSharedRef<SWidget> SAdvanceDeletionTab::OnGenerateComboContent(TSharedPtr<FString> SourceItem)
+{	
+	TSharedRef <STextBlock> ContructedComboText = SNew(STextBlock)
+	.Text(FText::FromString(*SourceItem.Get()));
+	return ContructedComboText;
+}
+void SAdvanceDeletionTab::OnComboSelectionChanged(TSharedPtr<FString> SelectedOption, 
+ESelectInfo::Type InSelectInfo)
+{
+	DebugHeader::Print(*SelectedOption.Get(),FColor::Cyan);
+	ComboDiplayTextBlock->SetText(FText::FromString(*SelectedOption.Get()));
+	FSuperManagerModule& SuperManagerModule = 
+	FModuleManager::LoadModuleChecked<FSuperManagerModule>(TEXT("SuperManager"));
+	//Pass data for our module to filter based on the selected option
+	if(*SelectedOption.Get() == ListAll)
+	{
+		//List all stored asset data
+	}
+	else if(*SelectedOption.Get() == ListUnused)
+	{
+		//List all unused assets
+		SuperManagerModule.ListUnusedAssetsForAssetList(StoredAssetsData,DisplayedAssetsData);
+		RefreshAssetListView();
+	}
+}
+#pragma endregion
