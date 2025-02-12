@@ -8,20 +8,24 @@
 
 #define ListAll TEXT("List All Available Assets")
 #define ListUnused TEXT("List Unused Assets")
+#define ListSameName TEXT("List Assets With Same Name ")
 
 void SAdvanceDeletionTab::Construct(const FArguments& InArgs)
 {
 	bCanSupportFocus = true;
-
-	FSlateFontInfo TitleTextFont = FCoreStyle::Get().GetFontStyle("EmbossedText");
-	TitleTextFont.Size = 30;
-	StoredAssetsData = InArgs._AssetsDataToStore;
-	DisplayedAssetsData = StoredAssetsData;
 	
 	CheckBoxesArray.Empty();
 	AssetsDataToDeleteArray.Empty();
+	ComboBoxSourceItems.Empty();
+	
 	ComboBoxSourceItems.Add(MakeShared<FString>(ListAll));
 	ComboBoxSourceItems.Add(MakeShared<FString>(ListUnused));
+	ComboBoxSourceItems.Add(MakeShared<FString>(ListSameName));
+
+	FSlateFontInfo TitleTextFont = GetEmboseedTextFont();
+	TitleTextFont.Size = 30;
+	StoredAssetsData = InArgs._AssetsDataToStore;
+	DisplayedAssetsData = StoredAssetsData;
 	
 	ChildSlot
 	[
@@ -103,7 +107,8 @@ TSharedRef<SListView<TSharedPtr<FAssetData>>> SAdvanceDeletionTab::ConstructAsse
 	ConstructedAssetListView = SNew(SListView< TSharedPtr <FAssetData> >)
 	    .ItemHeight(40.f) // Espacio entre elementos
 		.ListItemsSource(&DisplayedAssetsData)
-	    .OnGenerateRow(this, &SAdvanceDeletionTab::OnGenerateRowForList);
+		.OnGenerateRow(this,&SAdvanceDeletionTab::OnGenerateRowForList)
+	    .OnMouseButtonClick(this,&SAdvanceDeletionTab::OnRowWidgetMoustButtonClicked);
 	return ConstructedAssetListView.ToSharedRef();
 
 }
@@ -118,6 +123,14 @@ void SAdvanceDeletionTab::RefreshAssetListView()
 		ConstructedAssetListView->RebuildList();
 	}
 }
+
+void SAdvanceDeletionTab::OnRowWidgetMoustButtonClicked(TSharedPtr<FAssetData> ClickedData)
+{
+	FSuperManagerModule& SuperManagerModule = 
+	FModuleManager::LoadModuleChecked<FSuperManagerModule>(TEXT("SuperManager"));
+	SuperManagerModule.SyncCBToClickedAssetForAssetList(ClickedData->ObjectPath.ToString());
+}
+
 #pragma region RowWidgetForAssetListView
 TSharedRef<ITableRow> SAdvanceDeletionTab::OnGenerateRowForList(TSharedPtr<FAssetData> AssetDataToDisplay,
 	const TSharedRef<STableViewBase>& OwnerTable)
@@ -253,6 +266,10 @@ FReply SAdvanceDeletionTab::OnDeleteButtonClicked(TSharedPtr<FAssetData> Clicked
 		{
 			StoredAssetsData.Remove(ClickedAssetData);
 		}
+		if(DisplayedAssetsData.Contains(ClickedAssetData))
+		{
+			DisplayedAssetsData.Remove(ClickedAssetData);
+		}
 		//Refresh the list
 		RefreshAssetListView();
 	}
@@ -317,11 +334,17 @@ FReply SAdvanceDeletionTab::OnDeleteAllButtonClicked()
 	{
 		for(const TSharedPtr<FAssetData>& DeletedData:AssetsDataToDeleteArray)
 		{
+			//Updating the stored assets data
 			if(StoredAssetsData.Contains(DeletedData))
 			{
 				StoredAssetsData.Remove(DeletedData);
 			}
+			if(DisplayedAssetsData.Contains(DeletedData))
+			{
+				DisplayedAssetsData.Remove(DeletedData);
+			}
 		}
+		
 		RefreshAssetListView();
 	}
 	//Pass data to our module for deletion
@@ -396,14 +419,23 @@ ESelectInfo::Type InSelectInfo)
 	FSuperManagerModule& SuperManagerModule = 
 	FModuleManager::LoadModuleChecked<FSuperManagerModule>(TEXT("SuperManager"));
 	//Pass data for our module to filter based on the selected option
+	
 	if(*SelectedOption.Get() == ListAll)
 	{
+		DisplayedAssetsData = StoredAssetsData;
+		RefreshAssetListView();
 		//List all stored asset data
 	}
 	else if(*SelectedOption.Get() == ListUnused)
 	{
 		//List all unused assets
 		SuperManagerModule.ListUnusedAssetsForAssetList(StoredAssetsData,DisplayedAssetsData);
+		RefreshAssetListView();
+	}
+	else if(*SelectedOption.Get() == ListSameName)
+	{
+		//List out all assets with same name
+		SuperManagerModule.ListSameNameAssetsForAssetList(StoredAssetsData,DisplayedAssetsData);
 		RefreshAssetListView();
 	}
 }

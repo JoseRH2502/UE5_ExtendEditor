@@ -20,7 +20,8 @@ private:
 	TSharedRef< SListView< TSharedPtr <FAssetData> > > ConstructAssetListView();
 	TSharedPtr< SListView< TSharedPtr <FAssetData> > > ConstructedAssetListView;
 	void RefreshAssetListView();
-	
+
+	void OnRowWidgetMoustButtonClicked(TSharedPtr<FAssetData> ClickedData);
 	TSharedRef<ITableRow> OnGenerateRowForList(TSharedPtr<FAssetData> AssetDataToDisplay,const TSharedRef<STableViewBase>& OwnerTable);
 	TSharedRef<SCheckBox> ConstructCheckBox(const TSharedPtr<FAssetData>& AssetDataToDisplay);
 	void OnCheckBoxStateChanged(ECheckBoxState NewState, TSharedPtr<FAssetData> AssetData);
