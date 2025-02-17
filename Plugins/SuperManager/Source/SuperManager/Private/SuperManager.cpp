@@ -8,6 +8,7 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetToolsModule.h"
 #include "SlateWidgets/AdvanceDeletionWidget.h"
+#include "CustomStyle/SuperManagerStyle.h"
 
 #define LOCTEXT_NAMESPACE "FSuperManagerModule"
 
@@ -16,6 +17,7 @@ void FSuperManagerModule::StartupModule()
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 	InitCBMenuExtention();
 	RegisterAdvanceDelectionTab();
+	FSuperManagerStyle::InitializeIcons();
 }
 #pragma region ContentBrowserMenuExtention
 void FSuperManagerModule::InitCBMenuExtention()
@@ -50,7 +52,7 @@ void FSuperManagerModule::AddCBMenuEntry(class FMenuBuilder& MenuBuilder)
 	(
 		FText::FromString(TEXT("Delete Unused Assets")),
 		FText::FromString(TEXT("Safely delete all unused assets under folder")),
-		FSlateIcon(),
+		FSlateIcon(FSuperManagerStyle::GetStyleSetName(),"ContentBrowser.DeleteUnusedAssets"),	//Custom icon
 		FExecuteAction::CreateRaw(this,&FSuperManagerModule::OnDeleteUnsuedAssetButtonClicked)
 	);
 
@@ -58,7 +60,7 @@ void FSuperManagerModule::AddCBMenuEntry(class FMenuBuilder& MenuBuilder)
 	(
 		FText::FromString(TEXT("Delete Empty Folders")), //Title text for menu entry
 		FText::FromString(TEXT("Safely delete all empty folders")), //Tooltip text
-		FSlateIcon(),	//Custom icon
+		FSlateIcon(FSuperManagerStyle::GetStyleSetName(),"ContentBrowser.DeleteEmptyFolders"),	
 		FExecuteAction::CreateRaw(this,&FSuperManagerModule::OnDeleteEmptyFoldersButtonClicked) //The actual function to excute
 	);
 
@@ -66,7 +68,7 @@ void FSuperManagerModule::AddCBMenuEntry(class FMenuBuilder& MenuBuilder)
 	(
 		FText::FromString(TEXT("Advance Deletion")), //Title text for menu entry
 		FText::FromString(TEXT("List assets by specific condition in a tab for deleting")), //Tooltip text
-		FSlateIcon(),	//Custom icon
+		FSlateIcon(FSuperManagerStyle::GetStyleSetName(),"ContentBrowser.AdvanceDeletion"),	//Custom icon
 		FExecuteAction::CreateRaw(this,&FSuperManagerModule::OnAdvanceDelectionButtonClicked) //The actual function to excute
 	);
 }
@@ -208,7 +210,8 @@ void FSuperManagerModule::RegisterAdvanceDelectionTab()
 	//FGlobalTabmanager is used to register an editor tab 
 	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(FName("AdvanceDeletion"),
 		FOnSpawnTab::CreateRaw(this,&FSuperManagerModule::OnSpawnAdvanceDelectionTab))
-		.SetDisplayName(FText::FromString(TEXT("Advance Deletion")));
+	    .SetDisplayName(FText::FromString(TEXT("Advance Deletion")))
+        .SetIcon(FSlateIcon(FSuperManagerStyle::GetStyleSetName(),"ContentBrowser.AdvanceDeletion"));
 }
 
 TSharedRef<SDockTab> FSuperManagerModule::OnSpawnAdvanceDelectionTab(const FSpawnTabArgs& Args)
@@ -217,6 +220,7 @@ TSharedRef<SDockTab> FSuperManagerModule::OnSpawnAdvanceDelectionTab(const FSpaw
 	[
 		SNew(SAdvanceDeletionTab)
 		.AssetsDataToStore(GetAllAssetDataUnderSelectedFolder())
+		.CurrentSelectedFolder(FolderPathsSelected[0])
 	];
 }
 
@@ -342,7 +346,10 @@ void FSuperManagerModule::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
+	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(FName("AdvanceDeletion"));
+	FSuperManagerStyle::ShutDown();
 }
+
 
 
 #undef LOCTEXT_NAMESPACE
