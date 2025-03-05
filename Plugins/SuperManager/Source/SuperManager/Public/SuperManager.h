@@ -13,15 +13,26 @@ class FSuperManagerModule : public IModuleInterface
 #pragma region LevelEditorMenuExtension
 
     void InitLevelEditorExtention();
-
     TSharedRef<FExtender> CustomLevelEditorMenuExtender(const TSharedRef<FUICommandList> UICommandList, const TArray<AActor*> SelectedActors);
-
     void AddLevelEditorMenuEntry(class FMenuBuilder& MenuBuilder);
-
     void OnLockActorSelectionButtonClicked();
     void OnUnlockActorSelectionButtonClicked();
 
 #pragma endregion
+
+#pragma region SelectionLock
+
+    void InitCustomSelectionEvent();
+    void OnActorSelected(UObject* SelectedObject);
+    void LockActorSelection(AActor* ActorToProcess);
+    void UnlockActorSelection(AActor* ActorToProcess);
+    bool CheckIsActorSelectionLocked(AActor* ActorToProcess);
+
+#pragma endregion
+
+    TWeakObjectPtr<class UEditorActorSubsystem> WeakEditorActorSubsystem;
+
+    bool GetEditorActorSubsystem();
 
     
        #pragma region ProccessDataForAdvanceDeletionTab
