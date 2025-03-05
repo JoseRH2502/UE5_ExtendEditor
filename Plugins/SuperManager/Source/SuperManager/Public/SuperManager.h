@@ -10,6 +10,20 @@ class FSuperManagerModule : public IModuleInterface
        virtual void StartupModule() override;
        virtual void ShutdownModule() override;
 
+#pragma region LevelEditorMenuExtension
+
+    void InitLevelEditorExtention();
+
+    TSharedRef<FExtender> CustomLevelEditorMenuExtender(const TSharedRef<FUICommandList> UICommandList, const TArray<AActor*> SelectedActors);
+
+    void AddLevelEditorMenuEntry(class FMenuBuilder& MenuBuilder);
+
+    void OnLockActorSelectionButtonClicked();
+    void OnUnlockActorSelectionButtonClicked();
+
+#pragma endregion
+
+    
        #pragma region ProccessDataForAdvanceDeletionTab
        bool DeleteSingleAssetForAssetList(const FAssetData& AssetDataToDelete);
        bool DeleteMultipleAssetsForAssetList(const TArray<FAssetData>& AssetsToDelete);
