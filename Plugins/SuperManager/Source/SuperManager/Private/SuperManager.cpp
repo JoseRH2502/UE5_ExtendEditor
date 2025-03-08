@@ -12,6 +12,10 @@
 #include "LevelEditor.h"
 #include "Engine/Selection.h"
 #include "Subsystems/EditorActorSubsystem.h"
+#include "CustomUICommands/SuperManagerUICommands.h"
+#include "SceneOutlinerModule.h"
+#include "CustomOutlinerColumn/OutlinerSelectionLockColumn.h"
+
 #define LOCTEXT_NAMESPACE "FSuperManagerModule"
 
 void FSuperManagerModule::StartupModule()
@@ -19,8 +23,11 @@ void FSuperManagerModule::StartupModule()
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 	InitCBMenuExtention();
 	RegisterAdvanceDelectionTab();
+	FSuperManagerUICommands::Register();
+	InitCustomUICommands();
 	InitLevelEditorExtention();
 	InitCustomSelectionEvent();
+	InitSceneOutlinerColumnExtension();
 	FSuperManagerStyle::InitializeIcons();
 }
 #pragma region ContentBrowserMenuExtention
@@ -333,6 +340,36 @@ void FSuperManagerModule::SyncCBToClickedAssetForAssetList(const FString& AssetP
 }
 #pragma endregion
 
+#pragma region CustomEditorUICommands
+
+void FSuperManagerModule::InitCustomUICommands()
+{
+	CustomUICommands = MakeShareable(new FUICommandList());
+
+	CustomUICommands->MapAction(
+		FSuperManagerUICommands::Get().LockActorSelection,
+		FExecuteAction::CreateRaw(this,&FSuperManagerModule::OnSelectionLockHotKeyPressed)
+	);
+
+	CustomUICommands->MapAction(
+		FSuperManagerUICommands::Get().UnlockActorSelection,
+		FExecuteAction::CreateRaw(this,&FSuperManagerModule::OnUnlockActorSelectionHotKeyPressed)
+	);
+}
+
+void FSuperManagerModule::OnSelectionLockHotKeyPressed()
+{
+	OnLockActorSelectionButtonClicked();
+}
+
+void FSuperManagerModule::OnUnlockActorSelectionHotKeyPressed()
+{
+	OnUnlockActorSelectionButtonClicked();
+}
+
+#pragma endregion
+
+
 #pragma region ProccessDataForAdvanceDeletionTab
 bool FSuperManagerModule::DeleteSingleAssetForAssetList(const FAssetData & AssetDataToDelete)
 {	
@@ -355,6 +392,9 @@ void FSuperManagerModule::InitLevelEditorExtention()
 
 	TArray<FLevelEditorModule::FLevelViewportMenuExtender_SelectedActors>& LevelEditorMenuExtenders =
 	LevelEditorModule.GetAllLevelViewportContextMenuExtenders();
+	
+	TSharedRef<FUICommandList> ExistingLevelCommands = LevelEditorModule.GetGlobalLevelEditorActions();
+	ExistingLevelCommands->Append(CustomUICommands.ToSharedRef());
 
 	LevelEditorMenuExtenders.Add(FLevelEditorModule::FLevelViewportMenuExtender_SelectedActors::
 	CreateRaw(this,&FSuperManagerModule::CustomLevelEditorMenuExtender));
@@ -423,6 +463,7 @@ void FSuperManagerModule::OnLockActorSelectionButtonClicked()
 		CurrentLockedActorNames.Append(SelectedActor->GetActorLabel());
 	}
 
+	RefreshSceneOutliner();
 	DebugHeader::ShowNotifyInfo(CurrentLockedActorNames);
 }
 
@@ -446,6 +487,7 @@ void FSuperManagerModule::OnUnlockActorSelectionButtonClicked()
 	if(AllLockedActors.Num()==0)
 	{
 		DebugHeader::ShowNotifyInfo(TEXT("No selection locked actor currently"));
+		return;
 	}
 
 	FString UnlockedActorNames = TEXT("Lifted selection constraint for:");
@@ -458,7 +500,21 @@ void FSuperManagerModule::OnUnlockActorSelectionButtonClicked()
 		UnlockedActorNames.Append(LockedActor->GetActorLabel());
 	}
 
+	RefreshSceneOutliner();
 	DebugHeader::ShowNotifyInfo(UnlockedActorNames);
+}
+
+void FSuperManagerModule::RefreshSceneOutliner()
+{
+	FLevelEditorModule& LevelEditorModule =
+	FModuleManager::LoadModuleChecked<FLevelEditorModule>(TEXT("LevelEditor"));
+
+	TSharedPtr<ISceneOutliner> SceneOutliner = LevelEditorModule.GetFirstLevelEditor()->GetSceneOutliner();
+
+	if(SceneOutliner.IsValid())
+	{
+		SceneOutliner->FullRefresh();
+	}
 }
 
 #pragma endregion
@@ -512,6 +568,27 @@ bool FSuperManagerModule::CheckIsActorSelectionLocked(AActor * ActorToProcess)
 	return ActorToProcess->ActorHasTag(FName("Locked"));
 }
 
+void FSuperManagerModule::ProcessLockingForOutliner(AActor* ActorToProcess, bool bShouldLock)
+{
+	if(!GetEditorActorSubsystem()) return;
+
+	if(bShouldLock)
+	{
+		LockActorSelection(ActorToProcess);
+
+		WeakEditorActorSubsystem->SetActorSelectionState(ActorToProcess,false);
+
+		DebugHeader::ShowNotifyInfo(TEXT("Locked selection for:\n") + ActorToProcess->GetActorLabel());
+	}
+	else
+	{
+		UnlockActorSelection(ActorToProcess);
+
+		DebugHeader::ShowNotifyInfo(TEXT("Removed selection lock for:\n") + ActorToProcess->GetActorLabel());
+	}
+}
+
+
 #pragma endregion
 
 bool FSuperManagerModule::GetEditorActorSubsystem()
@@ -524,6 +601,28 @@ bool FSuperManagerModule::GetEditorActorSubsystem()
 	return WeakEditorActorSubsystem.IsValid();
 }
 
+#pragma region SceneOutlinerExtension
+
+void FSuperManagerModule::InitSceneOutlinerColumnExtension()
+{	
+	FSceneOutlinerModule& SceneOutlinerModule =
+	FModuleManager::LoadModuleChecked<FSceneOutlinerModule>(TEXT("SceneOutliner"));
+
+	FSceneOutlinerColumnInfo SelectionLockColumnInfo(
+		ESceneOutlinerColumnVisibility::Visible,
+		1,
+		FCreateSceneOutlinerColumn::CreateRaw(this,&FSuperManagerModule::OnCreateSelectionLockColumn)
+	);
+
+	SceneOutlinerModule.RegisterDefaultColumnType<FOutlinerSelectionLockColumn>(SelectionLockColumnInfo);
+}
+
+TSharedRef<ISceneOutlinerColumn> FSuperManagerModule::OnCreateSelectionLockColumn(ISceneOutliner & SceneOutliner)
+{
+	return MakeShareable(new FOutlinerSelectionLockColumn(SceneOutliner));
+}
+
+#pragma endregion
 void FSuperManagerModule::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,

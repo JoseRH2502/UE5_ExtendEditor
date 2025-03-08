@@ -10,9 +10,11 @@ public:
 	static void ShutDown();
 
 	static FName GetStyleSetName(){return StyleSetName;}
+	static TSharedRef<FSlateStyleSet> GetCreatedSlateStyleSet() {return CreatedSlateStyleSet.ToSharedRef(); }
 
 private:
 	static FName StyleSetName;
 	static TSharedRef<FSlateStyleSet> CreateSlateStyleSet();
 	static TSharedPtr<FSlateStyleSet> CreatedSlateStyleSet;
+	
 };

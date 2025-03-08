@@ -19,17 +19,37 @@ class FSuperManagerModule : public IModuleInterface
     void OnUnlockActorSelectionButtonClicked();
 
 #pragma endregion
+    
+#pragma region SceneOutlinerExtension
 
+    void InitSceneOutlinerColumnExtension();
+
+    TSharedRef<class ISceneOutlinerColumn> OnCreateSelectionLockColumn(class ISceneOutliner& SceneOutliner);
+
+#pragma endregion
+    
 #pragma region SelectionLock
 
     void InitCustomSelectionEvent();
     void OnActorSelected(UObject* SelectedObject);
     void LockActorSelection(AActor* ActorToProcess);
     void UnlockActorSelection(AActor* ActorToProcess);
+#pragma endregion
     bool CheckIsActorSelectionLocked(AActor* ActorToProcess);
+    void ProcessLockingForOutliner(AActor* ActorToProcess,bool bShouldLock);
+    void RefreshSceneOutliner();
+    
+#pragma region CustomEditorUICommands
+
+    TSharedPtr<class FUICommandList> CustomUICommands;
+
+    void InitCustomUICommands();
+
+    void OnSelectionLockHotKeyPressed();
+    void OnUnlockActorSelectionHotKeyPressed();
+
 
 #pragma endregion
-
     TWeakObjectPtr<class UEditorActorSubsystem> WeakEditorActorSubsystem;
 
     bool GetEditorActorSubsystem();
@@ -60,5 +80,7 @@ class FSuperManagerModule : public IModuleInterface
        TSharedRef<SDockTab> OnSpawnAdvanceDelectionTab(const FSpawnTabArgs& Args);
        TArray< TSharedPtr <FAssetData> > GetAllAssetDataUnderSelectedFolder();
        #pragma endregion
+
+    
    };
 
