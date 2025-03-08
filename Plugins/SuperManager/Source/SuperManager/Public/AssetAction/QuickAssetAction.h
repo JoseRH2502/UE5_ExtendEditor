@@ -36,7 +36,7 @@ public:
 	void RemoveUnusedAssets();
 	
 private:
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta=(AllowPrivateAccess=true))
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Assets Actors type", meta=(AllowPrivateAccess=true))
 	TMap<UClass*,FString>PrefixMap = 
 	{
 		{UBlueprint::StaticClass(),TEXT("BP_")},

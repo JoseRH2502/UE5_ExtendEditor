@@ -86,6 +86,11 @@ void FSuperManagerModule::AddCBMenuEntry(class FMenuBuilder& MenuBuilder)
 
 void FSuperManagerModule::OnDeleteEmptyFoldersButtonClicked()
 {
+	if(ConstructedDockTab.IsValid())
+	{
+		DebugHeader::ShowMsgDialog(EAppMsgType::Ok,TEXT("Please close advance deletion tab before this operation"));
+		return;
+	}
 	FixUpRedirectors();
 	TArray<FString> FolderPathsArray = UEditorAssetLibrary::ListAssets(FolderPathsSelected[0],true,true);
 	uint32 Counter = 0;
@@ -143,6 +148,12 @@ void FSuperManagerModule::OnAdvanceDelectionButtonClicked()
 
 void FSuperManagerModule::OnDeleteUnsuedAssetButtonClicked()
 {
+	if(ConstructedDockTab.IsValid())
+	{
+		DebugHeader::ShowMsgDialog(EAppMsgType::Ok,TEXT("Please close advance deletion tab before this operation"));
+		return;
+	}
+	
 	if(FolderPathsSelected.Num()>1)
 	{
 		DebugHeader::ShowMsgDialog(EAppMsgType::Ok,TEXT("You can only do this to one folder"));
@@ -227,12 +238,19 @@ void FSuperManagerModule::RegisterAdvanceDelectionTab()
 
 TSharedRef<SDockTab> FSuperManagerModule::OnSpawnAdvanceDelectionTab(const FSpawnTabArgs& Args)
 {
-	return SNew(SDockTab).TabRole(ETabRole::NomadTab)
+	if(FolderPathsSelected.Num()==0) return SNew(SDockTab).TabRole(ETabRole::NomadTab);
+
+	ConstructedDockTab = SNew(SDockTab).TabRole(ETabRole::NomadTab)
 	[
 		SNew(SAdvanceDeletionTab)
 		.AssetsDataToStore(GetAllAssetDataUnderSelectedFolder())
 		.CurrentSelectedFolder(FolderPathsSelected[0])
 	];
+
+	ConstructedDockTab->SetOnTabClosed(
+	SDockTab::FOnTabClosedCallback::CreateRaw(this,&FSuperManagerModule::OnAdvanceDeletionTabClosed));
+
+	return ConstructedDockTab.ToSharedRef();
 }
 
 TArray<TSharedPtr<FAssetData>> FSuperManagerModule::GetAllAssetDataUnderSelectedFolder()
@@ -280,6 +298,15 @@ TArray<TSharedPtr<FAssetData>> FSuperManagerModule::GetAllAssetDataUnderSelected
 		 AvailableAssetsData.Add(MakeShared<FAssetData>(Data));
 	}
 	return  AvailableAssetsData;
+}
+
+void FSuperManagerModule::OnAdvanceDeletionTabClosed(TSharedRef<SDockTab> TabToClose)
+{
+	if(ConstructedDockTab.IsValid())
+	{
+		ConstructedDockTab.Reset();
+		FolderPathsSelected.Empty();
+	}
 }
 
 bool FSuperManagerModule::DeleteMultipleAssetsForAssetList(const TArray<FAssetData>& AssetsToDelete)
