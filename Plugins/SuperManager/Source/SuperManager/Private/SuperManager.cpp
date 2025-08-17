@@ -536,13 +536,15 @@ void FSuperManagerModule::RefreshSceneOutliner()
 	FLevelEditorModule& LevelEditorModule =
 	FModuleManager::LoadModuleChecked<FLevelEditorModule>(TEXT("LevelEditor"));
 
-	TSharedPtr<ISceneOutliner> SceneOutliner = LevelEditorModule.GetFirstLevelEditor()->GetSceneOutliner();
+	TArray<TWeakPtr<ISceneOutliner>> Outliners = LevelEditorModule.GetFirstLevelEditor()->GetAllSceneOutliners();
+	TSharedPtr<ISceneOutliner> SceneOutliner = Outliners.Num() > 0 ? Outliners[0].Pin() : nullptr;
 
 	if(SceneOutliner.IsValid())
 	{
 		SceneOutliner->FullRefresh();
 	}
 }
+
 
 #pragma endregion
 
